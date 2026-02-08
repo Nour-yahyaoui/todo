@@ -98,13 +98,30 @@ export async function PUT(request: Request) {
     const body = await request.json();
     console.log('Updating todo', id, 'with:', body);
     
-    // Build dynamic update query
+    // Build dynamic update using tagged template literal
     const updates: any = {};
-    if (body.title !== undefined) updates.title = body.title;
-    if (body.description !== undefined) updates.description = body.description;
-    if (body.category !== undefined) updates.category = body.category;
-    if (body.deadline !== undefined) updates.deadline = body.deadline;
-    if (body.done !== undefined) updates.done = body.done;
+    const values: any[] = [];
+    
+    if (body.title !== undefined) {
+      updates.title = body.title;
+      values.push(body.title);
+    }
+    if (body.description !== undefined) {
+      updates.description = body.description;
+      values.push(body.description);
+    }
+    if (body.category !== undefined) {
+      updates.category = body.category;
+      values.push(body.category);
+    }
+    if (body.deadline !== undefined) {
+      updates.deadline = body.deadline;
+      values.push(body.deadline);
+    }
+    if (body.done !== undefined) {
+      updates.done = body.done;
+      values.push(body.done);
+    }
     
     if (Object.keys(updates).length === 0) {
       return NextResponse.json(
@@ -113,26 +130,26 @@ export async function PUT(request: Request) {
       );
     }
     
-    // Create SET clause
-    const setClauses = Object.keys(updates)
-      .map((key, i) => `${key} = $${i + 2}`)
+    // Create SET clause parts
+    const setParts = Object.keys(updates)
+      .map((key, i) => `${key} = $${i + 1}`)
       .join(', ');
     
-    const values = [parseInt(id), ...Object.values(updates)];
+    // Full SQL query with parameters
+    const query = `UPDATE todos SET ${setParts} WHERE id = $${values.length + 1} RETURNING *`;
+    const allValues = [...values, parseInt(id)];
     
-    // Using parameterized query
-    const query = `UPDATE todos SET ${setClauses} WHERE id = $1 RETURNING *`;
+    // Execute with sql.query() for dynamic queries
+    const result = await sql.query(query, allValues);
     
-    const todo = await sql(query, values);
-    
-    if (todo.length === 0) {
+    if (result.length === 0) {
       return NextResponse.json(
         { error: 'Todo not found' },
         { status: 404 }
       );
     }
     
-    return NextResponse.json({ todo: todo[0] });
+    return NextResponse.json({ todo: result[0] });
     
   } catch (error: any) {
     console.error('Error updating todo:', error);

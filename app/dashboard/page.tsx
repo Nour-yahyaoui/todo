@@ -1,14 +1,14 @@
-"use client";
-import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
-import DashboardHeader from "./components/DashboardHeader";
-import CategoriesSidebar from "./components/CategoriesSidebar";
-import StatsCard from "./components/StatsCard";
-import TodoList from "./components/TodoList";
-import MobileSidebar from "./components/MobileSidebar";
-import LoadingState from "./components/LoadingState";
-import ErrorState from "./components/ErrorState";
-import TodoEditForm from "./components/TodoEditForm";
+'use client';
+import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import DashboardHeader from './components/DashboardHeader';
+import CategoriesSidebar from './components/CategoriesSidebar';
+import StatsCard from './components/StatsCard';
+import TodoList from './components/TodoList';
+import MobileSidebar from './components/MobileSidebar';
+import LoadingState from './components/LoadingState';
+import ErrorState from './components/ErrorState';
+import AddTodoButton from './components/AddTodoButton';
 
 export interface User {
   id: number;
@@ -32,92 +32,82 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [categories, setCategories] = useState<string[]>([]);
-  const [selectedCategory, setSelectedCategory] = useState<string>("All");
+  const [selectedCategory, setSelectedCategory] = useState<string>('All');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
 
   useEffect(() => {
     const checkAuthAndLoadData = async () => {
       try {
-        await new Promise((resolve) => setTimeout(resolve, 2000));
-
-        const isLoggedIn = localStorage.getItem("isLoggedIn");
-        const userData = localStorage.getItem("user");
-
+        await new Promise(resolve => setTimeout(resolve, 2000));
+        
+        const isLoggedIn = localStorage.getItem('isLoggedIn');
+        const userData = localStorage.getItem('user');
+        
         if (!isLoggedIn || !userData) {
-          router.push("/login");
+          router.push('/login');
           return;
         }
-
+        
         const parsedUser = JSON.parse(userData);
         setUser(parsedUser);
-
+        
         const response = await fetch(`/api/todos?userId=${parsedUser.id}`);
-
+        
         if (!response.ok) {
           const errorData = await response.json().catch(() => ({}));
-          throw new Error(
-            `API error: ${response.status} - ${errorData.error || "Unknown error"}`,
-          );
+          throw new Error(`API error: ${response.status} - ${errorData.error || 'Unknown error'}`);
         }
-
+        
         const todosData = await response.json();
         setTodos(todosData);
-
+        
         const categorySet = new Set<string>();
         todosData.forEach((todo: Todo) => {
           if (todo.category && todo.category.trim()) {
             categorySet.add(todo.category);
           }
         });
-
+        
         setCategories(Array.from(categorySet));
         setLoading(false);
       } catch (err: any) {
-        console.error("Error in dashboard:", err);
-        setError(err.message || "Failed to load data");
+        console.error('Error in dashboard:', err);
+        setError(err.message || 'Failed to load data');
         setLoading(false);
       }
     };
-
+    
     checkAuthAndLoadData();
   }, [router, refreshKey]);
 
   const handleLogout = () => {
-    localStorage.removeItem("user");
-    localStorage.removeItem("isLoggedIn");
-    document.cookie = "user=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
-    document.cookie =
-      "isLoggedIn=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
-    window.location.href = "/login";
+    localStorage.removeItem('user');
+    localStorage.removeItem('isLoggedIn');
+    document.cookie = 'user=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
+    document.cookie = 'isLoggedIn=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
+    window.location.href = '/login';
   };
 
   const handleTodosChange = () => {
-    setRefreshKey((prev) => prev + 1);
+    setRefreshKey(prev => prev + 1);
   };
 
-  const filteredTodos =
-    selectedCategory === "All"
-      ? todos
-      : todos.filter((todo) => todo.category === selectedCategory);
+  const filteredTodos = selectedCategory === 'All' 
+    ? todos 
+    : todos.filter(todo => todo.category === selectedCategory);
 
   if (loading) {
     return <LoadingState />;
   }
 
   if (error) {
-    return (
-      <ErrorState
-        error={error}
-        onRetry={() => window.location.reload()}
-        onLogout={handleLogout}
-      />
-    );
+    return <ErrorState error={error} onRetry={() => window.location.reload()} onLogout={handleLogout} />;
   }
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <DashboardHeader
+      <DashboardHeader 
         user={user}
         todosCount={todos.length}
         onLogout={handleLogout}
@@ -148,29 +138,23 @@ export default function Dashboard() {
 
           {/* Main Content */}
           <div className="w-full lg:w-3/4">
+            {/* Add Todo Button */}
+            <div className="mb-6">
+              <AddTodoButton 
+                userId={user?.id || 0} 
+                onTodoAdded={handleTodosChange}
+              />
+            </div>
+
+            {/* Todo List - WITHOUT userId prop if TodoList doesn't need it */}
             <TodoList
               todos={filteredTodos}
               allTodos={todos}
               selectedCategory={selectedCategory}
               categories={categories}
               onCategorySelect={setSelectedCategory}
-              userId={user?.id || 0}
-              onTodosChange={handleTodosChange}
             />
           </div>
-
-          <button
-            onClick={() => setRefreshKey((prev) => prev + 1)}
-            className="fixed bottom-4 right-4 bg-green-500 text-white p-3 rounded-full shadow-lg z-40"
-          >
-            🔄 Refresh
-          </button>
-          <button
-            onClick={() => setRefreshKey((prev) => prev + 1)}
-            className="fixed bottom-4 right-4 bg-green-500 text-white p-3 rounded-full shadow-lg z-40"
-          >
-            🔄 Refresh
-          </button>
         </div>
       </main>
     </div>
